@@ -15,14 +15,13 @@ func main() {
 		},
 	}
 
-	server := new(gochan.Serve)
-	go server.Start()
+	server := new(gochan.Server)
 
 	http.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
 		// Upgrade this HTTP connection to a WS connection:
 		ws, _ := upgrader.Upgrade(w, r, nil)
 		client := make(chan string, 1)
-		server.Server() <- client
+		server.AttachClient(r.Header.Get("Origin"), client)
 		for {
 			select {
 			case text, _ := <-client:

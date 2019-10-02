@@ -4,45 +4,38 @@ import (
 	"fmt"
 )
 
-type Serve struct {
-	server      chan chan string
-	clients     []chan string
+type Server struct {
+	channel     chan chan string
+	clients     map[string]chan string
 	clientCount int
 }
 
-func (serve *Serve) Server() chan chan string {
-	if serve.server == nil {
-		serve.server = make(chan chan string, 4)
+func (srv *Server) Channel() chan chan string {
+	if srv.channel == nil {
+		srv.channel = make(chan chan string, 4)
 	}
 
-	return serve.server
+	return srv.channel
 }
 
-func (serve *Serve) Clients() []chan string {
-	if serve.clients == nil {
-		serve.clients = make([]chan string, 0)
+func (srv *Server) Clients() map[string]chan string {
+	if srv.clients == nil {
+		srv.clients = make(map[string]chan string)
 	}
 
-	return serve.clients
+	return srv.clients
 }
 
-func (serve *Serve) attachClient(clients chan string) {
-	serveClients := serve.Clients()
+func (srv *Server) AttachClient(name string, client chan string) {
+	serveClients := srv.Clients()
+	if serveClients[name] != nil {
+		return
+	}
 
-	serve.clients = append(serveClients, clients)
-	serve.clientCount = len(serve.clients)
-}
+	serveClients[name] = client
+	srv.clientCount += 1
 
-func (serve *Serve) Start() {
-	server := serve.Server()
-
-	for {
-		select {
-		case client := <- server:
-			serve.attachClient(client)
-			for _, client := range serve.Clients() {
-				client <- fmt.Sprintf("%d clients connected.", serve.clientCount)
-			}
-		}
+	for _, client := range srv.Clients() {
+		client <- fmt.Sprintf("%d clients connected.", srv.clientCount)
 	}
 }

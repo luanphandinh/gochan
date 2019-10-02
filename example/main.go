@@ -21,11 +21,8 @@ func main() {
 	http.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
 		// Upgrade this HTTP connection to a WS connection:
 		ws, _ := upgrader.Upgrade(w, r, nil)
-		// And register a client for this connection with the uptimeServer:
 		client := make(chan string, 1)
 		server.Server() <- client
-		// And now check for uptimes written to the client indefinitely.
-		// Yes, we are lacking proper error and disconnect checking here, too:
 		for {
 			select {
 			case text, _ := <-client:

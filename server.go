@@ -26,10 +26,10 @@ func (serve *Serve) Clients() []chan string {
 	return serve.clients
 }
 
-func (serve *Serve) AttachClients(clients ...chan string) {
+func (serve *Serve) attachClient(clients chan string) {
 	serveClients := serve.Clients()
 
-	serve.clients = append(serveClients, clients...)
+	serve.clients = append(serveClients, clients)
 	serve.clientCount = len(serve.clients)
 }
 
@@ -38,8 +38,8 @@ func (serve *Serve) Start() {
 
 	for {
 		select {
-		case client := <-server:
-			serve.AttachClients(client)
+		case client := <- server:
+			serve.attachClient(client)
 			for _, client := range serve.Clients() {
 				client <- fmt.Sprintf("%d clients connected.", serve.clientCount)
 			}

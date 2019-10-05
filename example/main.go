@@ -16,20 +16,27 @@ func main() {
 	}
 
 	server := new(gochan.Server)
+	go server.Run()
+
+	http.HandleFunc("/broadcast", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		server.Broadcast("Here come the message")
+		w.WriteHeader(204)
+	})
 
 	http.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
 		// Upgrade this HTTP connection to a WS connection:
 		ws, _ := upgrader.Upgrade(w, r, nil)
-		client := make(chan string, 1)
-		server.AttachClient(r.Header.Get("Origin"), client)
+		client := server.AttachClient(r.Header.Get("Origin"), ws)
 		for {
 			select {
-			case text, _ := <-client:
+			case text, _ := <- client:
 				writer, _ := ws.NextWriter(websocket.TextMessage)
 				writer.Write([]byte(text))
 				writer.Close()
 			}
 		}
 	})
-	http.ListenAndServe(":8080", nil)
+
+	http.ListenAndServe(":3000", nil)
 }

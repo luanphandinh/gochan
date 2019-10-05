@@ -1,41 +1,61 @@
 package gochan
 
 import (
-	"fmt"
+	"github.com/gorilla/websocket"
 )
 
+type Client struct {
+	channel chan string
+	socket  *websocket.Conn
+}
+
 type Server struct {
-	channel     chan chan string
-	clients     map[string]chan string
+	channel     chan string
+	clients     map[string]*Client
 	clientCount int
 }
 
-func (srv *Server) Channel() chan chan string {
+func (srv *Server) Channel() chan string {
 	if srv.channel == nil {
-		srv.channel = make(chan chan string, 4)
+		srv.channel = make(chan string, 4)
 	}
 
 	return srv.channel
 }
 
-func (srv *Server) Clients() map[string]chan string {
+func (srv *Server) Clients() map[string]*Client {
 	if srv.clients == nil {
-		srv.clients = make(map[string]chan string)
+		srv.clients = make(map[string]*Client)
 	}
 
 	return srv.clients
 }
 
-func (srv *Server) AttachClient(name string, client chan string) {
+func (srv *Server) AttachClient(name string, socket *websocket.Conn) chan string {
 	serveClients := srv.Clients()
-	if serveClients[name] != nil {
-		return
+	if client := serveClients[name]; client != nil {
+		return client.channel
 	}
 
+	channel := make(chan string, 1)
+	client := &Client{channel, socket}
 	serveClients[name] = client
 	srv.clientCount += 1
 
+	return client.channel
+}
+
+func (srv *Server) Broadcast(msg string) {
 	for _, client := range srv.Clients() {
-		client <- fmt.Sprintf("%d clients connected.", srv.clientCount)
+		client.channel <- msg
+	}
+}
+
+func (srv *Server) Run() {
+	for {
+		select {
+		case msg, _ := <-srv.Channel():
+			srv.Broadcast(msg)
+		}
 	}
 }
